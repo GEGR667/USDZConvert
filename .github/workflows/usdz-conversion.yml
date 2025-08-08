@@ -31,7 +31,7 @@ jobs:
         ~/usdztools/usdzconvert/usdzconvert house.usd house.usdz
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: converted-usdz
         path: house.usdz
