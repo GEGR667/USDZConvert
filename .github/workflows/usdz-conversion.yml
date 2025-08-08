@@ -1,0 +1,37 @@
+name: USDZ Conversion
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Download Reality Converter
+      run: |
+        curl -L -o Reality_Converter.dmg "https://developer.apple.com/augmented-reality/tools/files/Reality_Converter_beta_5.dmg"
+
+    - name: Mount Reality Converter
+      run: |
+        hdiutil attach Reality_Converter.dmg
+
+    - name: Copy usdzconvert binary
+      run: |
+        mkdir -p ~/usdztools
+        cp -R "/Volumes/Reality Converter Beta/Reality Converter Beta.app/Contents/XPCServices/RealityConverterService.xpc/Contents/SharedSupport/usdpython/usdzconvert" ~/usdztools/
+
+    - name: Run conversion
+      run: |
+        ~/usdztools/usdzconvert/usdzconvert house.usd house.usdz
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: converted-usdz
+        path: house.usdz
