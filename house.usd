@@ -1,0 +1,13 @@
+#usda 1.0
+(
+    defaultPrim = "House"
+)
+
+def Xform "House"
+{
+    def Cube "Cube"
+    {
+        double size = 1
+        color3f[] primvars:displayColor = [(0.8, 0.2, 0.2)]
+    }
+}
