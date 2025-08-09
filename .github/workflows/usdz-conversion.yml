@@ -29,30 +29,20 @@ jobs:
             ${{ runner.temp }}/USD-Build
           key: usd-${{ runner.os }}-v23.11
 
-      - name: Install prerequisites (only if cache miss)
-        if: steps.cache-usd.outputs.cache-hit != 'true'
+      - name: Install Homebrew dependencies
         run: |
           brew update
-          brew install cmake ninja python@3.10
-          # create isolated python venv to avoid PEP 668 errors
-          python3.10 -m venv "${RUNNER_TEMP}/usd-venv"
-          source "${RUNNER_TEMP}/usd-venv/bin/activate"
-          python -m pip install --upgrade pip
-          python -V
-          which python
+          brew install cmake ninja python@3.10 zlib
 
-      - name: Install PySide6, PyOpenGL, add uic to PATH
+      - name: Create and activate Python venv, install PySide6 and PyOpenGL, add uic to PATH
         run: |
-          # Always use python3.10 from brew
           PYTHON_EXE=$(brew --prefix python@3.10)/bin/python3.10
           VENV_PATH="${RUNNER_TEMP}/usd-venv"
           $PYTHON_EXE -m venv "$VENV_PATH"
           source "$VENV_PATH/bin/activate"
           pip install --upgrade pip
           pip install PySide6 PyOpenGL
-          # Add user base bin to PATH for uic binaries
           echo "$($PYTHON_EXE -m site --user-base)/bin" >> $GITHUB_PATH
-          # Confirm uic binary exists
           which pyside6-uic || (echo "pyside6-uic not found after install" && exit 1)
 
       - name: Build Pixar USD (only if cache miss)
@@ -62,12 +52,11 @@ jobs:
           source "${RUNNER_TEMP}/usd-venv/bin/activate"
           cd "${RUNNER_TEMP}"
           git clone --depth 1 --branch v23.11 https://github.com/PixarAnimationStudios/USD.git
-          # Minimal build: no tests/docs/examples/tutorials; Ninja for speed
           python USD/build_scripts/build_usd.py USD-Install \
             --build USD-Build \
             --no-tests --no-examples --no-tutorials --no-docs \
-            --generator Ninja | tee "${RUNNER_TEMP}/usd_build.log"
-          # Check if USD binaries directory exists after build
+            --generator Ninja \
+            --zlib /opt/homebrew/opt/zlib
           if [ ! -d "${RUNNER_TEMP}/USD-Install/bin" ]; then
             echo "USD binaries not found in USD-Install/bin"
             exit 1
