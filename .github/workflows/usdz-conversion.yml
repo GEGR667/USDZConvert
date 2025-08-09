@@ -55,7 +55,7 @@ jobs:
           python USD/build_scripts/build_usd.py USD-Install \
             --build USD-Build \
             --no-tests --no-examples --no-tutorials --no-docs \
-            --generator Ninja \
+            --generator Ninja
           if [ ! -d "${RUNNER_TEMP}/USD-Install/bin" ]; then
             echo "USD binaries not found in USD-Install/bin"
             exit 1
