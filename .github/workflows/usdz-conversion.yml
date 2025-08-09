@@ -54,9 +54,9 @@ jobs:
           git clone --depth 1 --branch v23.11 https://github.com/PixarAnimationStudios/USD.git
           python USD/build_scripts/build_usd.py USD-Install \
             --build USD-Build \
-            --no-tests --no-examples --no-tutorials --no-docs --no-boost \
+            --no-tests --no-examples --no-tutorials --no-docs \
             --generator Ninja \
-                  --cmake-build-args="-DZLIB_ROOT=/opt/homebrew/opt/zlib -DBOOST_ROOT=/opt/homebrew/opt/boost -DCMAKE_POLICY_VERSION_MINIMUM=3.5"
+                  --cmake-build-args="-DZLIB_ROOT=/opt/homebrew/opt/zlib -DBOOST_ROOT=/opt/homebrew/opt/boost -DBoost_NO_SYSTEM_PATHS=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5"
           if [ ! -d "${RUNNER_TEMP}/USD-Install/bin" ]; then
             echo "USD binaries not found in USD-Install/bin"
             exit 1
