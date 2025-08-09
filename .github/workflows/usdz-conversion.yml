@@ -41,7 +41,7 @@ jobs:
           python -V
           which python
 
-      - name: Install PySide2 and PySide6, add uic to PATH
+      - name: Install PySide6, add uic to PATH
         run: |
           # Always use python3.10 from brew
           PYTHON_EXE=$(brew --prefix python@3.10)/bin/python3.10
@@ -49,11 +49,11 @@ jobs:
           $PYTHON_EXE -m venv "$VENV_PATH"
           source "$VENV_PATH/bin/activate"
           pip install --upgrade pip
-          pip install PySide2 PySide6
+          pip install PySide6
           # Add user base bin to PATH for uic binaries
           echo "$($PYTHON_EXE -m site --user-base)/bin" >> $GITHUB_PATH
           # Confirm uic binary exists
-          which pyside2-uic || which pyside6-uic || (echo "uic not found after install" && exit 1)
+          which pyside6-uic || (echo "pyside6-uic not found after install" && exit 1)
 
       - name: Build Pixar USD (only if cache miss)
         if: steps.cache-usd.outputs.cache-hit != 'true'
