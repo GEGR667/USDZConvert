@@ -1,4 +1,4 @@
-name: USDZ Conversion (macOS, OpenUSD-style)
+name: USDZ Conversion (macOS, OpenUSD submodule)
 
 on:
   workflow_dispatch:
@@ -9,26 +9,27 @@ jobs:
   build-and-convert:
     runs-on: macos-15
     env:
-      PYTHON_VERSION: "3.11"   # aligns with OpenUSD macOS CI
+      PYTHON_VERSION: "3.11"
     timeout-minutes: 60
 
     steps:
-      - name: Checkout
+      - name: Checkout (with submodules)
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-      - name: Verify input USD exists
+      - name: Verify files
         run: |
-          echo "Workspace: $GITHUB_WORKSPACE"
           ls -la
           test -f "$GITHUB_WORKSPACE/house.usd" || (echo "house.usd not found at repo root"; exit 1)
+          test -f "$GITHUB_WORKSPACE/vendor/OpenUSD/build_scripts/build_usd.py" || (echo "OpenUSD submodule missing"; exit 1)
 
-      # Cache the installed toolchain folder (matches OpenUSD CI pattern)
       - name: Restore cached OpenUSD (USDinst)
         id: cache-usd
         uses: actions/cache/restore@v4
         with:
           path: USDinst
-          key: ${{ runner.os }}-OpenUSD-${{ env.PYTHON_VERSION }}-${{ hashFiles('build_scripts/**/*') }}
+          key: ${{ runner.os }}-OpenUSD-${{ env.PYTHON_VERSION }}-${{ hashFiles('vendor/OpenUSD/build_scripts/**/*') }}
 
       - name: Setup Python (only if building)
         if: steps.cache-usd.outputs.cache-hit != 'true'
@@ -36,25 +37,19 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install deps (only if building)
+      - name: Install macOS build deps (only if building)
         if: steps.cache-usd.outputs.cache-hit != 'true'
         run: |
-          # Match OpenUSD CI: use Apple’s CMake app & Xcode toolchain
           export PATH=/Applications/CMake.app/Contents/bin:$PATH
           sudo xcode-select -s /Applications/Xcode_16.app/Contents/Developer
-          # Workaround macOS versioning during pip installs (OpenUSD CI does this)
-          export SYSTEM_VERSION_COMPAT=1
           python -m pip install --upgrade pip setuptools
-          # No PySide/GL needed for usdzconvert
-          export -n SYSTEM_VERSION_COMPAT
 
       - name: Build OpenUSD (only if cache miss)
         if: steps.cache-usd.outputs.cache-hit != 'true'
         run: |
           set -e
           export PATH=/Applications/CMake.app/Contents/bin:$PATH
-          # Build into USDinst/ inside the workspace (so the cache step can save it)
-          python build_scripts/build_usd.py \
+          python vendor/OpenUSD/build_scripts/build_usd.py \
             --no-materialx \
             --generator Xcode \
             --build USDgen/build \
