@@ -20,7 +20,6 @@ jobs:
           ls -la
           test -f "$GITHUB_WORKSPACE/house.usd" && echo "Found house.usd" || (echo "house.usd NOT found"; exit 1)
 
-      # Cache the built USD toolchain to speed up subsequent runs
       - name: Cache USD build
         id: cache-usd
         uses: actions/cache@v4
@@ -35,14 +34,22 @@ jobs:
         run: |
           brew update
           brew install cmake ninja python@3.10
-          python3 -m pip install --upgrade pip
+          # create isolated python venv to avoid PEP 668 errors
+          python3.10 -m venv "${RUNNER_TEMP}/usd-venv"
+          source "${RUNNER_TEMP}/usd-venv/bin/activate"
+          python -m pip install --upgrade pip
+          python -V
+          which python
 
       - name: Build Pixar USD (only if cache miss)
         if: steps.cache-usd.outputs.cache-hit != 'true'
         run: |
+          set -e
+          source "${RUNNER_TEMP}/usd-venv/bin/activate"
           cd "${RUNNER_TEMP}"
           git clone --depth 1 --branch v23.11 https://github.com/PixarAnimationStudios/USD.git
-          python3 USD/build_scripts/build_usd.py USD-Install \
+          # Minimal build: no tests/docs/examples/tutorials; Ninja for speed
+          python USD/build_scripts/build_usd.py USD-Install \
             --build USD-Build \
             --no-tests --no-examples --no-tutorials --no-docs \
             --generator Ninja | tee "${RUNNER_TEMP}/usd_build.log"
@@ -69,7 +76,6 @@ jobs:
 
       - name: Convert house.usd -> house.usdz (absolute paths)
         run: |
-          USD_INSTALL="${USD_INSTALL:?Missing USD_INSTALL}"
           SRC="$GITHUB_WORKSPACE/house.usd"
           DST="$GITHUB_WORKSPACE/house.usdz"
           echo "Converting: $SRC -> $DST"
@@ -81,4 +87,3 @@ jobs:
         with:
           name: house_usdz
           path: house.usdz
-
