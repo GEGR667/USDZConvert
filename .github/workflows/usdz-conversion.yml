@@ -13,6 +13,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Show workspace + confirm house.usd
+        run: |
+          echo "PWD: $(pwd)"
+          echo "Workspace: $GITHUB_WORKSPACE"
+          ls -la
+          test -f "$GITHUB_WORKSPACE/house.usd" && echo "Found house.usd" || (echo "house.usd NOT found"; exit 1)
+
       # Cache the built USD toolchain to speed up subsequent runs
       - name: Cache USD build
         id: cache-usd
@@ -35,20 +42,39 @@ jobs:
         run: |
           cd "${RUNNER_TEMP}"
           git clone --depth 1 --branch v23.11 https://github.com/PixarAnimationStudios/USD.git
-          # Minimal build: no tests/docs/examples/tutorials; Ninja for speed
           python3 USD/build_scripts/build_usd.py USD-Install \
             --build USD-Build \
             --no-tests --no-examples --no-tutorials --no-docs \
-            --generator Ninja
+            --generator Ninja | tee "${RUNNER_TEMP}/usd_build.log"
 
-      - name: List USD tools
-        run: |
-          ls -la "${RUNNER_TEMP}/USD-Install/bin"
+      - name: Upload build log (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: usd_build_log
+          path: ${{ runner.temp }}/usd_build.log
+          if-no-files-found: ignore
 
-      - name: Convert house.usd -> house.usdz
+      - name: Set USD env + list tools
         run: |
-          "${RUNNER_TEMP}/USD-Install/bin/usdzconvert" house.usd house.usdz
-          ls -lh house.usdz
+          export USD_INSTALL="${RUNNER_TEMP}/USD-Install"
+          echo "USD_INSTALL=$USD_INSTALL" >> $GITHUB_ENV
+          echo "$USD_INSTALL/bin" >> $GITHUB_PATH
+          echo "USD bin:"
+          ls -la "$USD_INSTALL/bin"
+
+      - name: Sanity check usdzconvert
+        run: |
+          usdzconvert --help || (echo "usdzconvert not runnable"; exit 1)
+
+      - name: Convert house.usd -> house.usdz (absolute paths)
+        run: |
+          USD_INSTALL="${USD_INSTALL:?Missing USD_INSTALL}"
+          SRC="$GITHUB_WORKSPACE/house.usd"
+          DST="$GITHUB_WORKSPACE/house.usdz"
+          echo "Converting: $SRC -> $DST"
+          usdzconvert "$SRC" "$DST"
+          ls -lh "$DST"
 
       - name: Upload USDZ artifact
         uses: actions/upload-artifact@v4
