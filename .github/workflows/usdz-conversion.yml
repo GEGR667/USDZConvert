@@ -1,37 +1,58 @@
-name: USDZ Conversion
+name: USDZ Conversion (Pixar USD build)
 
 on:
+  workflow_dispatch:
   push:
     branches: [ main ]
-  workflow_dispatch:
 
 jobs:
-  build:
+  convert:
     runs-on: macos-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Download Reality Converter
-      run: |
-        curl -L -o Reality_Converter.dmg "https://developer.apple.com/augmented-reality/tools/files/Reality_Converter_beta_5.dmg"
+      # Cache the built USD toolchain to speed up subsequent runs
+      - name: Cache USD build
+        id: cache-usd
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ runner.temp }}/USD-Install
+            ${{ runner.temp }}/USD-Build
+          key: usd-${{ runner.os }}-v23.11
 
-    - name: Mount Reality Converter
-      run: |
-        hdiutil attach Reality_Converter.dmg
+      - name: Install prerequisites (only if cache miss)
+        if: steps.cache-usd.outputs.cache-hit != 'true'
+        run: |
+          brew update
+          brew install cmake ninja python@3.10
+          python3 -m pip install --upgrade pip
 
-    - name: Copy usdzconvert binary
-      run: |
-        mkdir -p ~/usdztools
-        cp -R "/Volumes/Reality Converter Beta/Reality Converter Beta.app/Contents/XPCServices/RealityConverterService.xpc/Contents/SharedSupport/usdpython/usdzconvert" ~/usdztools/
+      - name: Build Pixar USD (only if cache miss)
+        if: steps.cache-usd.outputs.cache-hit != 'true'
+        run: |
+          cd "${RUNNER_TEMP}"
+          git clone --depth 1 --branch v23.11 https://github.com/PixarAnimationStudios/USD.git
+          # Minimal build: no tests/docs/examples/tutorials; Ninja for speed
+          python3 USD/build_scripts/build_usd.py USD-Install \
+            --build USD-Build \
+            --no-tests --no-examples --no-tutorials --no-docs \
+            --generator Ninja
 
-    - name: Run conversion
-      run: |
-        ~/usdztools/usdzconvert/usdzconvert house.usd house.usdz
+      - name: List USD tools
+        run: |
+          ls -la "${RUNNER_TEMP}/USD-Install/bin"
 
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: converted-usdz
-        path: house.usdz
+      - name: Convert house.usd -> house.usdz
+        run: |
+          "${RUNNER_TEMP}/USD-Install/bin/usdzconvert" house.usd house.usdz
+          ls -lh house.usdz
+
+      - name: Upload USDZ artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: house_usdz
+          path: house.usdz
+
