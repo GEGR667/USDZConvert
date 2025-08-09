@@ -56,7 +56,6 @@ jobs:
             --build USD-Build \
             --no-tests --no-examples --no-tutorials --no-docs \
             --generator Ninja \
-            --zlib /opt/homebrew/opt/zlib
           if [ ! -d "${RUNNER_TEMP}/USD-Install/bin" ]; then
             echo "USD binaries not found in USD-Install/bin"
             exit 1
