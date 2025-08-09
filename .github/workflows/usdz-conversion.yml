@@ -41,6 +41,15 @@ jobs:
           python -V
           which python
 
+      - name: Install PySide2 and PySide6, add uic to PATH
+        run: |
+          source "${RUNNER_TEMP}/usd-venv/bin/activate"
+          pip install PySide2 PySide6
+          # Add user base bin to PATH for uic binaries
+          echo "$(python -m site --user-base)/bin" >> $GITHUB_PATH
+          # Confirm uic binary exists
+          which pyside2-uic || which pyside6-uic || (echo "uic not found after install" && exit 1)
+
       - name: Build Pixar USD (only if cache miss)
         if: steps.cache-usd.outputs.cache-hit != 'true'
         run: |
@@ -53,6 +62,11 @@ jobs:
             --build USD-Build \
             --no-tests --no-examples --no-tutorials --no-docs \
             --generator Ninja | tee "${RUNNER_TEMP}/usd_build.log"
+          # Check if USD binaries directory exists after build
+          if [ ! -d "${RUNNER_TEMP}/USD-Install/bin" ]; then
+            echo "USD binaries not found in USD-Install/bin"
+            exit 1
+          fi
 
       - name: Upload build log (always)
         if: always()
