@@ -43,10 +43,15 @@ jobs:
 
       - name: Install PySide2 and PySide6, add uic to PATH
         run: |
-          source "${RUNNER_TEMP}/usd-venv/bin/activate"
+          # Always use python3.10 from brew
+          PYTHON_EXE=$(brew --prefix python@3.10)/bin/python3.10
+          VENV_PATH="${RUNNER_TEMP}/usd-venv"
+          $PYTHON_EXE -m venv "$VENV_PATH"
+          source "$VENV_PATH/bin/activate"
+          pip install --upgrade pip
           pip install PySide2 PySide6
           # Add user base bin to PATH for uic binaries
-          echo "$(python -m site --user-base)/bin" >> $GITHUB_PATH
+          echo "$($PYTHON_EXE -m site --user-base)/bin" >> $GITHUB_PATH
           # Confirm uic binary exists
           which pyside2-uic || which pyside6-uic || (echo "uic not found after install" && exit 1)
 
